@@ -194,6 +194,65 @@ let DATA = [];
 let dataLoaded = false;
 let genType='mega_645', statsType='mega_645', recentType='mega_645', rankType='mega_645';
 
+// Đặt hàm này ngay dưới khai báo biến let genType=...
+function fastCrowdScore(nums) {
+   let score = 100;
+   let n0 = nums[0], n1 = nums[1], n2 = nums[2], n3 = nums[3], n4 = nums[4], n5 = nums[5];
+   
+   let dayC = 0, monthC = 0, yearC = 0;
+   for(let n of nums) {
+     if(n <= 31) dayC++;
+     if(n <= 12) monthC++;
+     if(n <= 27) yearC++;
+   }
+   if(dayC === 6) score -= 50; else if(dayC === 5) score -= 30; else if(dayC <= 2) score += 35;
+   if(monthC >= 4) score -= 35; else if(monthC === 3) score -= 15;
+   if(yearC > 0) score -= (yearC * 5);
+   
+   let luckyC = 0;
+   for(let n of nums) {
+     if([6,8,9,16,18,26,28,36,38,39].includes(n)) luckyC++;
+   }
+   if(luckyC > 0) score -= (luckyC * 10);
+   
+   let maxVis = 0;
+   [5,6,10].forEach(gw => {
+      let colC = new Array(gw).fill(0);
+      let diag1 = {}, diag2 = {};
+      for(let n of nums) {
+        let r = Math.floor((n-1)/gw), c = (n-1)%gw;
+        colC[c]++;
+        diag1[r-c] = (diag1[r-c] || 0) + 1;
+        diag2[r+c] = (diag2[r+c] || 0) + 1;
+      }
+      let mCol = Math.max(...colC);
+      let mD1 = Math.max(...Object.values(diag1));
+      let mD2 = Math.max(...Object.values(diag2));
+      let mDiag = Math.max(mD1, mD2);
+      
+      let curVis = 0;
+      if(mCol >= 4) curVis += 35; else if(mCol === 3) curVis += 15;
+      if(mDiag >= 4) curVis += 35; else if(mDiag === 3) curVis += 15;
+      if(curVis > maxVis) maxVis = curVis;
+   });
+   if(maxVis > 0) score -= maxVis; else score += 10;
+   
+   let tens = nums.map(n => Math.floor(n/10));
+   let tCounts = {};
+   tens.forEach(t => tCounts[t] = (tCounts[t] || 0) + 1);
+   let mTen = Math.max(...Object.values(tCounts));
+   if(mTen >= 5) score += 60; else if(mTen === 4) score += 35;
+   
+   let consecMax = 1, curC = 1;
+   for(let i=1; i<6; i++) {
+     if(nums[i] === nums[i-1]+1) { curC++; consecMax = Math.max(consecMax, curC); }
+     else curC = 1;
+   }
+   if(consecMax >= 5) score += 80; else if(consecMax === 4) score += 50; else if(consecMax === 3) score += 25;
+   
+   return score;
+}
+
 // ─── LOAD DATA ───────────────────────────────────────────
 async function loadData(force=false){
   if(dataLoaded && !force) return true;
@@ -488,66 +547,89 @@ const workerUrl = URL.createObjectURL(blob);
 
 // ─── STATS ENGINE ────────────────────────────────────────
 function computePSI(vtype){
-  const draws=getDraws(vtype);
-  if(draws.length<5) return{score:0,level:'XANH',buy:2,action:'Chưa đủ dữ liệu.',color:'#10b981',g1:0,g2:0,g3:0,g4:0,g5:0,g6:0};
-  const isM=vtype==='mega_645', mult=isM?45:79, jpBig=isM?80e9:120e9;
-  const latest=draws[draws.length-1];
-  const latestJP=latest.jp||0;
+  const draws = getDraws(vtype);
+  if(draws.length < 5) return{score:0,level:'XANH',buy:2,action:'Chưa đủ dữ liệu.',color:'#10b981',g1:0,g2:0,g3:0,g4:0,g5:0,g6:0};
+  const isM = vtype === 'mega_645', mult = isM ? 45 : 79, jpBig = isM ? 80e9 : 120e9;
+  const latest = draws[draws.length-1];
+  const latestJP = latest.jp || 0;
   
   // G1: Volume
-  let g1=0;
-  if(latest.g3>0){
-    const estR=latest.g3*mult*10000;
-    const past=draws.slice(-6,-1).map(d=>d.g3||0).filter(v=>v>0);
-    const avg=past.length?past.reduce((a,b)=>a+b,0)/past.length*mult*10000:estR;
-    const fomo=estR/avg;
-    g1=latestJP>=jpBig&&fomo>=1.3?20:latestJP>=jpBig*.75&&fomo>=1.15?13:latestJP>=jpBig*.5?7:2;
+  let g1 = 0;
+  if(latest.g3 > 0){
+    const estR = latest.g3 * mult * 10000;
+    const past = draws.slice(-6,-1).map(d => d.g3||0).filter(v => v>0);
+    const avg = past.length ? past.reduce((a,b)=>a+b,0)/past.length * mult * 10000 : estR;
+    const fomo = estR / avg;
+    g1 = latestJP >= jpBig && fomo >= 1.3 ? 20 : latestJP >= jpBig * .75 && fomo >= 1.15 ? 13 : latestJP >= jpBig * .5 ? 7 : 2;
+  }
+
+  // Lấy 10 kỳ nổ JP gần nhất để chấm g2, g3
+  const jpDraws = draws.filter(d => d.w > 0 || (d.w2 && d.w2 > 0));
+  const recentJPs = jpDraws.slice(-10);
+  const nRecent = recentJPs.length;
+  
+  let g2 = 0, g3 = 0;
+  if(nRecent > 0){
+      let weirdCount = 0, singleCount = 0;
+      for(let d of recentJPs){
+          if(fastCrowdScore(d.n.map(Number)) >= 90) weirdCount++;
+          if((d.w + (d.w2 || 0)) === 1) singleCount++;
+      }
+      let weirdRate = weirdCount / nRecent;
+      g2 = weirdRate >= 0.7 ? 15 : (weirdRate >= 0.5 ? 9 : (weirdRate >= 0.3 ? 5 : 1));
+      
+      let singleRate = singleCount / nRecent;
+      g3 = singleRate >= 0.8 ? 15 : (singleRate >= 0.6 ? 11 : (singleRate >= 0.4 ? 6 : 2));
   }
   
   // G4: Margin Thực Tế 30%
-  let g4=0,lastJI=-1;
-  for(let i=draws.length-1;i>=0;i--){if(draws[i].w>0){lastJI=i;break;}}
-  if(lastJI>=0){
-    const gross=draws.slice(lastJI+1).reduce((s,d)=>s+(d.g3||0)*mult*10000,0);
-    const jp2paid=draws.slice(lastJI+1).reduce((s,d)=>s+(d.jp2||0)*(d.w2||0),0);
-    const net = (gross * 0.30) - jp2paid; // Chi phí ngầm 70%
+  let g4 = 0, lastJI = -1;
+  for(let i=draws.length-1; i>=0; i--){ if(draws[i].w > 0){ lastJI = i; break; } }
+  if(lastJI >= 0){
+    const gross = draws.slice(lastJI+1).reduce((s,d)=>s+(d.g3||0)*mult*10000, 0);
+    const jp2paid = draws.slice(lastJI+1).reduce((s,d)=>s+(d.jp2||0)*(d.w2||0), 0);
+    const net = (gross * 0.30) - jp2paid; 
     const cur_pct = latestJP > 0 ? (net / latestJP * 100) : 0;
-    g4=cur_pct>=110?20:cur_pct>=80?13:cur_pct>=50?6:2;
+    g4 = cur_pct >= 110 ? 20 : cur_pct >= 80 ? 13 : cur_pct >= 50 ? 6 : 2;
   }
   
-  const dS=draws.length-lastJI-1, avgC=isM?10:15;
-  const g5=dS>=avgC*1.5?15:dS>=avgC?10:3;
-  const g6=latestJP>(isM?50e9:80e9)?15:5;
+  const dS = draws.length - lastJI - 1, avgC = isM ? 10 : 15;
+  const g5 = dS >= avgC * 1.5 ? 15 : dS >= avgC ? 10 : 3;
+  const g6 = latestJP > (isM ? 50e9 : 80e9) ? 15 : 5;
   
-  // Dựa vào phân bổ trung bình để tính 2+3
-  const g2 = 15; // Placeholder
-  const g3 = 15; // Placeholder
-  
-  const score=Math.min(100,g1+g2+g3+g4+g5+g6);
-  let level,buy,action,color;
-  if(score>=70){level='ĐỎ';buy=15;color='#ef4444';action='🔴 BÁO ĐỘNG ĐỎ: Áp lực xả quỹ rất lớn.\nCHIẾN THUẬT: ALL-IN — Mua vé Dị Thường.';}
-  else if(score>=45){level='CAM';buy=8;color='#f97316';action='🟠 CHUYỂN PHA: Tín hiệu trung bình.\nCHIẾN THUẬT: THĂM DÒ — Xen kẽ Dị và Phổ Thông.';}
-  else{level='XANH';buy=3;color='#10b981';action='🟢 AN TOÀN: Đang gom vốn.\nCHIẾN THUẬT: DU KÍCH — Mua vé Phổ Thông.';}
-  return{score,level,buy,action,color,g1,g2,g3,g4,g5,g6};
+  const score = Math.min(100, g1 + g2 + g3 + g4 + g5 + g6);
+  let level, buy, action, color;
+  if(score >= 70){ level='ĐỎ'; buy=15; color='#ef4444'; action='🔴 BÁO ĐỘNG ĐỎ: Áp lực xả quỹ rất lớn.\nCHIẾN THUẬT: ALL-IN — Mua vé Dị Thường.'; }
+  else if(score >= 45){ level='CAM'; buy=8; color='#f97316'; action='🟠 CHUYỂN PHA: Tín hiệu trung bình.\nCHIẾN THUẬT: THĂM DÒ — Xen kẽ Dị và Phổ Thông.'; }
+  else{ level='XANH'; buy=3; color='#10b981'; action='🟢 AN TOÀN: Đang gom vốn.\nCHIẾN THUẬT: DU KÍCH — Mua vé Phổ Thông.'; }
+  return{score, level, buy, action, color, g1, g2, g3, g4, g5, g6};
 }
 
-// ─── GEN ─────────────────────────────────────────────────
+// --- BÊN TRONG hàm generateTickets() ---
 async function generateTickets(){
   if(!dataLoaded){await loadData();if(!dataLoaded)return;}
-  const btn=document.getElementById('gen-btn');
-  const count=parseInt(document.getElementById('ticket-count').value);
-  const progDiv=document.getElementById('worker-progress');
+  const btn = document.getElementById('gen-btn');
+  const count = parseInt(document.getElementById('ticket-count').value);
+  const progDiv = document.getElementById('worker-progress');
   
-  btn.disabled=true; btn.textContent='⏳ Đang phân tích chỉ số PSI...';
-  document.getElementById('tickets-output').innerHTML='';
-  progDiv.style.display='block';
+  btn.disabled = true; btn.textContent = '⏳ Đang phân tích chỉ số PSI...';
+  document.getElementById('tickets-output').innerHTML = '';
+  progDiv.style.display = 'block';
   
-  await new Promise(r=>setTimeout(r,50));
-  const psi=computePSI(genType);
+  await new Promise(r => setTimeout(r, 50));
+  const psi = computePSI(genType);
   renderPSI(psi);
   
-  btn.textContent='⚙️ KHỞI ĐỘNG HỆ THỐNG VÉT CẠN TỔ HỢP...';
+  btn.textContent = '⚙️ KHỞI ĐỘNG HỆ THỐNG VÉT CẠN TỔ HỢP...';
   
+  // Xử lý Vấn đề 3: Dynamic weirdCut theo PSI level
+  let dynamicWeirdCut = 90;
+  if (psi.level === 'ĐỎ') {
+      dynamicWeirdCut = 80; // Nới chuẩn để vét được nhiều tổ hợp dị hơn khi cần All-in
+  } else if (psi.level === 'XANH') {
+      dynamicWeirdCut = 95; // Siết chuẩn khi tích lũy
+  }
+
   const worker = new Worker(workerUrl);
   
   worker.onmessage = function(e) {
@@ -556,22 +638,161 @@ async function generateTickets(){
       } else if (e.data.type === 'done') {
           progDiv.innerText = `Đã hoàn tất quét vét cạn ${e.data.totalScanned.toLocaleString()} tổ hợp vé!`;
           renderTickets(e.data.tickets, genType);
-          btn.disabled=false; 
-          btn.textContent='🤖 AI Vét Cạn & Sinh Vé (Wheeling)';
+          btn.disabled = false; 
+          btn.textContent = '🤖 AI Vét Cạn & Sinh Vé (Wheeling)';
           worker.terminate();
       }
   };
   
-  // Truyền dữ liệu vào Worker
   worker.postMessage({
       vtype: genType,
       count: count,
       psiLevel: psi.level,
       draws: getDraws(genType),
       kMax: CFG[genType].max,
-      weirdCut: 90
+      weirdCut: dynamicWeirdCut
   });
 }
+
+// --- CẬP NHẬT CHUỖI workerScript (Truyền fastCrowdScore vào và sửa xử lý OOM) ---
+const workerScript = `
+  self.onmessage = function(e) {
+    const { vtype, count, psiLevel, draws, kMax, weirdCut } = e.data;
+    
+    let pairArr = Array.from({length: kMax + 1}, () => new Float64Array(kMax + 1));
+    let nDraws = draws.length;
+    for (let d of draws) {
+      let nums = d.n.map(Number).sort((a,b)=>a-b);
+      for (let i = 0; i < nums.length; i++) {
+        for (let j = i + 1; j < nums.length; j++) {
+          pairArr[nums[i]][nums[j]] += 1.0;
+          pairArr[nums[j]][nums[i]] += 1.0;
+        }
+      }
+    }
+    const expProb = (6 * 5) / (kMax * (kMax - 1));
+    const expThresh = Math.max(1.0, nDraws * expProb * 0.8);
+
+    const poolSize = vtype === 'mega_645' ? 36 : 45;
+    let jpDraws = draws.filter(d => d.w > 0);
+    let nw = {};
+    let target = jpDraws.slice(-35); 
+    let nd = target.length;
+    
+    for (let idx = 0; idx < nd; idx++) {
+      let d = target[idx];
+      let decay = Math.pow(0.95, nd - 1 - idx);
+      let dNums = d.n.map(Number);
+      let mult = (psiLevel === 'ĐỎ') ? 2.0 : 1.5;
+      for (let n of dNums) {
+        nw[n] = (nw[n] || 0) + (mult * decay);
+      }
+    }
+    
+    let sortedNw = Object.entries(nw).sort((a,b)=>b[1]-a[1]);
+    let pool = sortedNw.slice(0, poolSize).map(x => Number(x[0]));
+    
+    if (pool.length < poolSize) {
+       for(let i=1; i<=kMax; i++) {
+         if(!pool.includes(i)) pool.push(i);
+         if(pool.length === poolSize) break;
+       }
+    }
+    pool.sort((a,b)=>a-b);
+    
+    // Inject hàm chấm điểm dùng chung
+    ${fastCrowdScore.toString()}
+
+    let weirdCand = [];
+    let normalCand = [];
+    let indices = [0,1,2,3,4,5];
+    let n = pool.length;
+    let k = 6;
+    let totalCombs = 0;
+    
+    while(true) {
+       totalCombs++;
+       let tNums = [pool[indices[0]], pool[indices[1]], pool[indices[2]], pool[indices[3]], pool[indices[4]], pool[indices[5]]];
+       
+       let fav = 0;
+       let pairs = [[0,1],[0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],[2,3],[2,4],[2,5],[3,4],[3,5],[4,5]];
+       for(let p of pairs) {
+          if(pairArr[tNums[p[0]]][tNums[p[1]]] >= expThresh) fav++;
+       }
+       
+       let cs = fastCrowdScore(tNums);
+       let tStr = tNums.map(x => x.toString().padStart(2,'0'));
+       let tkObj = { nums: tStr, crowdScore: cs, fav: fav };
+       
+       // Sàng lọc mạnh ngay từ khâu thêm vào mảng
+       if (cs >= weirdCut && fav <= 5) {
+           weirdCand.push(tkObj);
+       } else if (cs < weirdCut && fav >= 6) {
+           normalCand.push(tkObj);
+       }
+       
+       // Xử lý Vấn đề 2: OOM Trimming (Thay vì xóa Random, sort và giữ lại tinh hoa)
+       if (totalCombs % 50000 === 0) {
+           if (weirdCand.length > 8000) {
+               weirdCand.sort((a,b) => b.crowdScore - a.crowdScore || a.fav - b.fav);
+               weirdCand = weirdCand.slice(0, 4000); // Giữ top 4000
+           }
+           if (normalCand.length > 8000) {
+               normalCand.sort((a,b) => b.fav - a.fav || b.crowdScore - a.crowdScore);
+               normalCand = normalCand.slice(0, 4000); // Giữ top 4000
+           }
+       }
+
+       if (totalCombs % 200000 === 0) {
+           self.postMessage({ type: 'progress', scanned: totalCombs });
+       }
+
+       let i = k - 1;
+       while (i >= 0 && indices[i] === i + n - k) { i--; }
+       if (i < 0) break;
+       indices[i]++;
+       for (let j = i + 1; j < k; j++) indices[j] = indices[j - 1] + 1;
+    }
+
+    weirdCand.sort((a,b) => b.crowdScore - a.crowdScore || a.fav - b.fav);
+    normalCand.sort((a,b) => b.fav - a.fav || b.crowdScore - a.crowdScore);
+
+    function applyWheeling(cands, target) {
+        if(!cands.length || target <= 0) return [];
+        let selected = [cands[0]];
+        let maxOverlap = 2;
+        while(selected.length < target) {
+            let found = false;
+            for(let cand of cands) {
+               if(selected.includes(cand)) continue;
+               let isDiverse = true;
+               for(let sel of selected) {
+                  let overlap = cand.nums.filter(x => sel.nums.includes(x)).length;
+                  if(overlap > maxOverlap) { isDiverse = false; break; }
+               }
+               if(isDiverse) {
+                  selected.push(cand);
+                  found = true;
+                  if(selected.length === target) break;
+               }
+            }
+            if(!found) {
+               maxOverlap++;
+               if(maxOverlap > 5) break;
+            }
+        }
+        return selected;
+    }
+
+    let wTarget = (psiLevel === 'ĐỎ') ? count : (psiLevel === 'XANH' ? 0 : Math.ceil(count / 2));
+    let nTarget = count - wTarget;
+    
+    let finalWeird = applyWheeling(weirdCand, wTarget);
+    let finalNormal = applyWheeling(normalCand, nTarget);
+    
+    self.postMessage({ type: 'done', tickets: finalWeird.concat(finalNormal), totalScanned: totalCombs });
+  };
+`;
 
 function renderPSI(psi){
   const bgM={'ĐỎ':'rgba(239,68,68,.15)','CAM':'rgba(249,115,22,.15)','XANH':'rgba(16,185,129,.15)'};
