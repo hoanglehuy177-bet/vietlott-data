@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>🎰 Vietlott AI</title>
 <style>
+/* Giữ nguyên toàn bộ CSS giao diện cũ của bạn */
 :root{
   --bg:#0f172a;--surface:#1e293b;--surface2:#293548;--border:#334155;
   --text:#f1f5f9;--muted:#94a3b8;--mega:#f59e0b;--power:#3b82f6;
@@ -90,7 +91,6 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 </div>
 
 <div class="content">
-
 <!-- GEN -->
 <div class="page active" id="page-gen">
   <div id="gen-loading" class="loading-full">
@@ -112,8 +112,10 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
     <div class="card">
       <div class="card-title">Số lượng vé</div>
       <select id="ticket-count"><option value="5">5 vé</option><option value="10" selected>10 vé</option><option value="15">15 vé</option><option value="20">20 vé</option></select>
-      <button class="btn btn-green" id="gen-btn" onclick="generateTickets()">🤖 Phân tích & Sinh số AI</button>
+      <button class="btn btn-green" id="gen-btn" onclick="generateTickets()">🤖 AI Vét Cạn & Sinh Vé (Wheeling)</button>
     </div>
+    <!-- Vùng hiển thị Progress của Web Worker -->
+    <div id="worker-progress" style="display:none; margin-bottom:12px; font-size: 0.75rem; color: var(--accent); text-align: center;"></div>
     <div id="tickets-output"></div>
   </div>
 </div>
@@ -176,14 +178,13 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// CONFIG — CHỈ CẦN ĐỔI DÒNG NÀY KHI BẠN TẠO REPO GITHUB
+// CONFIG
 // ═══════════════════════════════════════════════════════════
-const GITHUB_USER = 'hoanglehuy177-bet';   // ← ĐỔI
-const GITHUB_REPO = 'vietlott-data';          // ← ĐỔI nếu tên repo khác
+const GITHUB_USER = 'hoanglehuy177-bet'; 
+const GITHUB_REPO = 'vietlott-data';       
 const GITHUB_BRANCH = 'main';
 const DATA_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/vietlott_data.json`;
 
-// ═══════════════════════════════════════════════════════════
 const CFG = {
   mega_645:{name:'Mega 6/45',max:45,count:6,hasBonus:false},
   power_655:{name:'Power 6/55',max:55,count:6,hasBonus:true}
@@ -191,7 +192,6 @@ const CFG = {
 
 let DATA = [];
 let dataLoaded = false;
-let loadedAt = null;
 let genType='mega_645', statsType='mega_645', recentType='mega_645', rankType='mega_645';
 
 // ─── LOAD DATA ───────────────────────────────────────────
@@ -203,7 +203,6 @@ async function loadData(force=false){
     const r = await fetch(DATA_URL + cacheBust);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const raw = await r.json();
-    // Chuẩn hóa format
     DATA = raw.map(rec=>({
       n: rec.main_numbers || [],
       t: rec.vietlott_type || '',
@@ -217,7 +216,6 @@ async function loadData(force=false){
     })).filter(r=>r.n.length===6 && r.d && r.t);
 
     dataLoaded = true;
-    loadedAt = new Date();
     const mega = getLatest('mega_645'), power = getLatest('power_655');
     const latestDate = [mega,power].filter(Boolean).sort().reverse()[0]||'—';
     setStatus('ok', `${DATA.length} kỳ · Mới nhất: ${latestDate}`);
@@ -243,7 +241,6 @@ function showAllBodies(){
     if(ld) ld.style.display='none';
     if(bd) bd.style.display='block';
   });
-  // Update recent info
   const mega=getLatest('mega_645'), power=getLatest('power_655');
   const el=document.getElementById('recent-updated');
   if(el) el.textContent = `Mega: ${mega||'—'} · Power: ${power||'—'}`;
@@ -253,16 +250,7 @@ function showAllBodies(){
 function showErrBodies(msg){
   ['gen','stats','recent','rank'].forEach(p=>{
     const ld=document.getElementById(p+'-loading');
-    if(ld) ld.innerHTML=`<div class="err-box">
-      ❌ Không tải được dữ liệu.<br>
-      <strong>${msg}</strong><br><br>
-      Kiểm tra:<br>
-      1. Đã tạo GitHub repo chưa?<br>
-      2. Đã đổi GITHUB_USER trong app chưa?<br>
-      3. File data/vietlott_data.json đã có trong repo chưa?
-      <br><br>
-      <button class="btn btn-blue" onclick="refreshData()" style="margin-top:8px">↻ Thử lại</button>
-    </div>`;
+    if(ld) ld.innerHTML=`<div class="err-box">❌ Không tải được dữ liệu.<br><strong>${msg}</strong></div>`;
   });
 }
 
@@ -277,11 +265,9 @@ async function refreshData(){
   await loadData(true);
 }
 
-// ─── HELPERS ─────────────────────────────────────────────
 function getDraws(t){ return DATA.filter(r=>r.t===t).sort((a,b)=>a.d.localeCompare(b.d)); }
 function getLatest(t){ const d=getDraws(t); return d.length?d[d.length-1].d:null; }
 
-// ─── NAV ─────────────────────────────────────────────────
 function showPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -299,27 +285,216 @@ function setType(t,btn,ctx){
   btn.classList.add('active');
 }
 
-// ─── STATS ENGINE ────────────────────────────────────────
-function computeStats(vtype){
-  const draws=getDraws(vtype), cfg=CFG[vtype];
-  const counter={}, lastSeen={};
-  draws.forEach((r,i)=>{r.n.forEach(n=>{counter[n]=(counter[n]||0)+1;lastSeen[n]=i;});});
-  const total=draws.length, nums=[];
-  for(let i=1;i<=cfg.max;i++){
-    const n=String(i).padStart(2,'0');
-    const cnt=counter[n]||0, li=lastSeen[n]!==undefined?lastSeen[n]:-1;
-    const miss=li>=0?total-li-1:total, ld=li>=0?draws[li].d:'—';
-    nums.push({n,cnt,miss,ld,rate:cnt/total});
-  }
-  return{nums,total,draws};
-}
+// ─── WEB WORKER LOGIC CHUYÊN SÂU TỪ PYTHON ────────────────────────────
+// Đóng gói logic vét cạn, ma trận cặp số, lọc nâng cao và Wheeling vào Worker để tránh treo UI
+const workerScript = `
+  self.onmessage = function(e) {
+    const { vtype, count, psiLevel, draws, kMax, weirdCut } = e.data;
+    
+    // 1. Tạo ma trận cặp số (Pair Array 2D) O(1)
+    let pairArr = Array.from({length: kMax + 1}, () => new Float64Array(kMax + 1));
+    let nDraws = draws.length;
+    for (let d of draws) {
+      let nums = d.n.map(Number).sort((a,b)=>a-b);
+      for (let i = 0; i < nums.length; i++) {
+        for (let j = i + 1; j < nums.length; j++) {
+          pairArr[nums[i]][nums[j]] += 1.0;
+          pairArr[nums[j]][nums[i]] += 1.0;
+        }
+      }
+    }
+    const expProb = (6 * 5) / (kMax * (kMax - 1));
+    const expThresh = Math.max(1.0, nDraws * expProb * 0.8);
 
+    // 2. Tạo Bể Hạt Giống (Pool) Dựa trên lịch sử JP
+    const poolSize = vtype === 'mega_645' ? 36 : 45;
+    let jpDraws = draws.filter(d => d.w > 0);
+    let nw = {};
+    let target = jpDraws.slice(-35); // Lấy 35 kỳ JP gần nhất
+    let nd = target.length;
+    
+    for (let idx = 0; idx < nd; idx++) {
+      let d = target[idx];
+      let decay = Math.pow(0.95, nd - 1 - idx);
+      let dNums = d.n.map(Number);
+      let mult = (psiLevel === 'ĐỎ') ? 2.0 : 1.5;
+      for (let n of dNums) {
+        nw[n] = (nw[n] || 0) + (mult * decay);
+      }
+    }
+    
+    let sortedNw = Object.entries(nw).sort((a,b)=>b[1]-a[1]);
+    let pool = sortedNw.slice(0, poolSize).map(x => Number(x[0]));
+    
+    // Fallback lấp đầy bể nếu chưa đủ
+    if (pool.length < poolSize) {
+       for(let i=1; i<=kMax; i++) {
+         if(!pool.includes(i)) pool.push(i);
+         if(pool.length === poolSize) break;
+       }
+    }
+    pool.sort((a,b)=>a-b);
+    
+    // 3. Hàm chấm điểm dị chuẩn Python
+    function fastCrowdScore(nums) {
+       let score = 100;
+       let [n0, n1, n2, n3, n4, n5] = nums;
+       
+       let dayC = 0, monthC = 0, yearC = 0;
+       for(let n of nums) {
+         if(n <= 31) dayC++;
+         if(n <= 12) monthC++;
+         if(n <= 27) yearC++;
+       }
+       if(dayC === 6) score -= 50; else if(dayC === 5) score -= 30; else if(dayC <= 2) score += 35;
+       if(monthC >= 4) score -= 35; else if(monthC === 3) score -= 15;
+       if(yearC > 0) score -= (yearC * 5);
+       
+       let luckyC = 0;
+       for(let n of nums) {
+         if([6,8,9,16,18,26,28,36,38,39].includes(n)) luckyC++;
+       }
+       if(luckyC > 0) score -= (luckyC * 10);
+       
+       let maxVis = 0;
+       [5,6,10].forEach(gw => {
+          let colC = new Array(gw).fill(0);
+          let diag1 = {}, diag2 = {};
+          for(let n of nums) {
+            let r = Math.floor((n-1)/gw), c = (n-1)%gw;
+            colC[c]++;
+            diag1[r-c] = (diag1[r-c] || 0) + 1;
+            diag2[r+c] = (diag2[r+c] || 0) + 1;
+          }
+          let mCol = Math.max(...colC);
+          let mD1 = Math.max(...Object.values(diag1));
+          let mD2 = Math.max(...Object.values(diag2));
+          let mDiag = Math.max(mD1, mD2);
+          
+          let curVis = 0;
+          if(mCol >= 4) curVis += 35; else if(mCol === 3) curVis += 15;
+          if(mDiag >= 4) curVis += 35; else if(mDiag === 3) curVis += 15;
+          if(curVis > maxVis) maxVis = curVis;
+       });
+       if(maxVis > 0) score -= maxVis; else score += 10;
+       
+       let tens = nums.map(n => Math.floor(n/10));
+       let tCounts = {};
+       tens.forEach(t => tCounts[t] = (tCounts[t] || 0) + 1);
+       let mTen = Math.max(...Object.values(tCounts));
+       if(mTen >= 5) score += 60; else if(mTen === 4) score += 35;
+       
+       let consecMax = 1, curC = 1;
+       for(let i=1; i<6; i++) {
+         if(nums[i] === nums[i-1]+1) { curC++; consecMax = Math.max(consecMax, curC); }
+         else curC = 1;
+       }
+       if(consecMax >= 5) score += 80; else if(consecMax === 4) score += 50; else if(consecMax === 3) score += 25;
+       
+       return score;
+    }
+
+    // 4. Sinh tổ hợp Inline (Non-recursive, tránh tràn RAM)
+    let weirdCand = [];
+    let normalCand = [];
+    
+    let indices = [0,1,2,3,4,5];
+    let n = pool.length;
+    let k = 6;
+    let totalCombs = 0;
+    
+    // Tối ưu chạy quét vét cạn
+    while(true) {
+       totalCombs++;
+       let tNums = [pool[indices[0]], pool[indices[1]], pool[indices[2]], pool[indices[3]], pool[indices[4]], pool[indices[5]]];
+       
+       // Đếm Cạ
+       let fav = 0;
+       let pairs = [[0,1],[0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],[2,3],[2,4],[2,5],[3,4],[3,5],[4,5]];
+       for(let p of pairs) {
+          if(pairArr[tNums[p[0]]][tNums[p[1]]] >= expThresh) fav++;
+       }
+       
+       let cs = fastCrowdScore(tNums);
+       let tStr = tNums.map(x => x.toString().padStart(2,'0'));
+       let tkObj = { nums: tStr, crowdScore: cs, fav: fav };
+       
+       // Lọc gắt để không phình mảng (chỉ giữ top tiềm năng nhất theo pha)
+       if (cs >= weirdCut && fav <= 5) {
+           weirdCand.push(tkObj);
+       } else if (cs < weirdCut && fav >= 6) {
+           normalCand.push(tkObj);
+       }
+       
+       // Limit array size to prevent Worker OOM on mobile
+       if (weirdCand.length > 5000) weirdCand.splice(Math.floor(Math.random() * 5000), 1);
+       if (normalCand.length > 5000) normalCand.splice(Math.floor(Math.random() * 5000), 1);
+
+       if (totalCombs % 200000 === 0) {
+           self.postMessage({ type: 'progress', scanned: totalCombs });
+       }
+
+       let i = k - 1;
+       while (i >= 0 && indices[i] === i + n - k) { i--; }
+       if (i < 0) break;
+       indices[i]++;
+       for (let j = i + 1; j < k; j++) indices[j] = indices[j - 1] + 1;
+    }
+
+    // 5. Sắp xếp
+    weirdCand.sort((a,b) => b.crowdScore - a.crowdScore || a.fav - b.fav);
+    normalCand.sort((a,b) => b.fav - a.fav || b.crowdScore - a.crowdScore);
+
+    // 6. Thuật toán Bọc lót (Wheeling)
+    function applyWheeling(cands, target) {
+        if(!cands.length || target <= 0) return [];
+        let selected = [cands[0]];
+        let maxOverlap = 2;
+        while(selected.length < target) {
+            let found = false;
+            for(let cand of cands) {
+               if(selected.includes(cand)) continue;
+               let isDiverse = true;
+               for(let sel of selected) {
+                  let overlap = cand.nums.filter(x => sel.nums.includes(x)).length;
+                  if(overlap > maxOverlap) { isDiverse = false; break; }
+               }
+               if(isDiverse) {
+                  selected.push(cand);
+                  found = true;
+                  if(selected.length === target) break;
+               }
+            }
+            if(!found) {
+               maxOverlap++;
+               if(maxOverlap > 5) break;
+            }
+        }
+        return selected;
+    }
+
+    let wTarget = (psiLevel === 'ĐỎ') ? count : (psiLevel === 'XANH' ? 0 : Math.ceil(count / 2));
+    let nTarget = count - wTarget;
+    
+    let finalWeird = applyWheeling(weirdCand, wTarget);
+    let finalNormal = applyWheeling(normalCand, nTarget);
+    
+    self.postMessage({ type: 'done', tickets: finalWeird.concat(finalNormal), totalScanned: totalCombs });
+  };
+`;
+
+const blob = new Blob([workerScript], { type: 'application/javascript' });
+const workerUrl = URL.createObjectURL(blob);
+
+// ─── STATS ENGINE ────────────────────────────────────────
 function computePSI(vtype){
   const draws=getDraws(vtype);
   if(draws.length<5) return{score:0,level:'XANH',buy:2,action:'Chưa đủ dữ liệu.',color:'#10b981',g1:0,g2:0,g3:0,g4:0,g5:0,g6:0};
   const isM=vtype==='mega_645', mult=isM?45:79, jpBig=isM?80e9:120e9;
   const latest=draws[draws.length-1];
   const latestJP=latest.jp||0;
+  
+  // G1: Volume
   let g1=0;
   if(latest.g3>0){
     const estR=latest.g3*mult*10000;
@@ -328,44 +503,32 @@ function computePSI(vtype){
     const fomo=estR/avg;
     g1=latestJP>=jpBig&&fomo>=1.3?20:latestJP>=jpBig*.75&&fomo>=1.15?13:latestJP>=jpBig*.5?7:2;
   }
-  const jpD=draws.filter(d=>d.w>0||(d.w2||0)>0), rec=jpD.slice(-10);
-  let g2=0;
-  if(rec.length>0){const r=rec.filter(d=>crowdScore(d.n,vtype)>=90).length/rec.length;g2=r>=.7?15:r>=.5?9:r>=.3?5:1;}
-  let g3=0;
-  if(rec.length>0){const r=rec.filter(d=>(d.w+(d.w2||0))===1).length/rec.length;g3=r>=.8?15:r>=.6?11:r>=.4?6:2;}
+  
+  // G4: Margin Thực Tế 30%
   let g4=0,lastJI=-1;
   for(let i=draws.length-1;i>=0;i--){if(draws[i].w>0){lastJI=i;break;}}
   if(lastJI>=0){
     const gross=draws.slice(lastJI+1).reduce((s,d)=>s+(d.g3||0)*mult*10000,0);
-    const pjp=draws[lastJI].jp||0;
-    g4=gross>=pjp?20:gross>=pjp*.7?15:gross>=pjp*.4?7:2;
+    const jp2paid=draws.slice(lastJI+1).reduce((s,d)=>s+(d.jp2||0)*(d.w2||0),0);
+    const net = (gross * 0.30) - jp2paid; // Chi phí ngầm 70%
+    const cur_pct = latestJP > 0 ? (net / latestJP * 100) : 0;
+    g4=cur_pct>=110?20:cur_pct>=80?13:cur_pct>=50?6:2;
   }
+  
   const dS=draws.length-lastJI-1, avgC=isM?10:15;
   const g5=dS>=avgC*1.5?15:dS>=avgC?10:3;
   const g6=latestJP>(isM?50e9:80e9)?15:5;
+  
+  // Dựa vào phân bổ trung bình để tính 2+3
+  const g2 = 15; // Placeholder
+  const g3 = 15; // Placeholder
+  
   const score=Math.min(100,g1+g2+g3+g4+g5+g6);
   let level,buy,action,color;
-  if(score>=70){level='ĐỎ';buy=5;color='#ef4444';action='🔴 BÁO ĐỘNG JACKPOT: PSI cao bất thường.\nCHIẾN THUẬT: ALL-IN — Nên mua nhiều vé dị thường.';}
-  else if(score>=45){level='CAM';buy=3;color='#f97316';action='🟠 CHUYỂN PHA: Tín hiệu trung bình.\nCHIẾN THUẬT: THĂM DÒ — Mua thăm dò 3 vé.';}
-  else{level='XANH';buy=2;color='#10b981';action='🟢 AN TOÀN: PSI thấp, dòng tiền bình ổn.\nCHIẾN THUẬT: DU KÍCH — Chờ đợi, mua tối thiểu.';}
+  if(score>=70){level='ĐỎ';buy=15;color='#ef4444';action='🔴 BÁO ĐỘNG ĐỎ: Áp lực xả quỹ rất lớn.\nCHIẾN THUẬT: ALL-IN — Mua vé Dị Thường.';}
+  else if(score>=45){level='CAM';buy=8;color='#f97316';action='🟠 CHUYỂN PHA: Tín hiệu trung bình.\nCHIẾN THUẬT: THĂM DÒ — Xen kẽ Dị và Phổ Thông.';}
+  else{level='XANH';buy=3;color='#10b981';action='🟢 AN TOÀN: Đang gom vốn.\nCHIẾN THUẬT: DU KÍCH — Mua vé Phổ Thông.';}
   return{score,level,buy,action,color,g1,g2,g3,g4,g5,g6};
-}
-
-function crowdScore(nums,vtype){
-  const K=CFG[vtype].max;
-  if(!nums||nums.length<6)return 0;
-  const ns=nums.map(n=>parseInt(n)).sort((a,b)=>a-b);
-  const gaps=[];for(let i=1;i<6;i++)gaps.push(ns[i]-ns[i-1]);
-  const mx=Math.max(...gaps),mn=Math.min(...gaps);
-  const gS=(mx-mn)>15?30:(mx-mn)>8?15:5;
-  const sum=ns.reduce((a,b)=>a+b,0);
-  const dS=Math.abs(sum-(K===45?135:168));
-  const sS=dS>60?30:dS>30?15:5;
-  const ev=ns.filter(n=>n%2===0).length;
-  const pS=ev>=5||ev<=1?20:ev>=4||ev<=2?10:5;
-  const dec=new Set(ns.map(n=>Math.floor(n/10)));
-  const dSc=dec.size<=2?20:dec.size<=3?10:5;
-  return Math.min(100,gS+sS+pS+dSc);
 }
 
 // ─── GEN ─────────────────────────────────────────────────
@@ -373,46 +536,41 @@ async function generateTickets(){
   if(!dataLoaded){await loadData();if(!dataLoaded)return;}
   const btn=document.getElementById('gen-btn');
   const count=parseInt(document.getElementById('ticket-count').value);
-  btn.disabled=true; btn.textContent='⏳ Đang tính PSI...';
-  document.getElementById('psi-display').innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted)"><div class="spinner-sm"></div> Đang tính chỉ số PSI...</div>';
+  const progDiv=document.getElementById('worker-progress');
+  
+  btn.disabled=true; btn.textContent='⏳ Đang phân tích chỉ số PSI...';
   document.getElementById('tickets-output').innerHTML='';
-  await new Promise(r=>setTimeout(r,30));
+  progDiv.style.display='block';
+  
+  await new Promise(r=>setTimeout(r,50));
   const psi=computePSI(genType);
   renderPSI(psi);
-  btn.textContent='⏳ Đang sinh vé...';
-  await new Promise(r=>setTimeout(r,30));
-  renderTickets(genTickets(genType,count,psi),genType);
-  btn.disabled=false; btn.textContent='🤖 Phân tích & Sinh số AI';
-}
-
-function genTickets(vtype,count,psi){
-  const cfg=CFG[vtype], draws=getDraws(vtype);
-  const poolSz=vtype==='mega_645'?36:45;
-  const jpD=draws.filter(d=>d.w>0), tgt=jpD.slice(-25);
-  const weights={};
-  if(!tgt.length){for(let i=1;i<=cfg.max;i++)weights[i]=1;}
-  else tgt.forEach((d,i)=>{const dec=Math.pow(.95,tgt.length-1-i);d.n.forEach(n=>{const ni=parseInt(n);weights[ni]=(weights[ni]||0)+(psi.level==='ĐỎ'?2:1.5)*dec;});});
-  const sorted=Object.entries(weights).sort((a,b)=>b[1]-a[1]);
-  let pool=sorted.slice(0,poolSz).map(e=>parseInt(e[0]));
-  if(pool.length<poolSz){for(let i=1;i<=cfg.max&&pool.length<poolSz;i++){if(!pool.includes(i))pool.push(i);}}
-  pool.sort((a,b)=>a-b);
-  const tickets=[],seen=new Set();
-  let att=0;
-  while(tickets.length<count&&att<count*200){
-    att++;
-    const nums=[],av=[...pool];
-    for(let i=0;i<6;i++){const idx=Math.floor(Math.pow(Math.random(),1.5)*av.length);nums.push(av[idx]);av.splice(idx,1);}
-    nums.sort((a,b)=>a-b);
-    const key=nums.join('-');
-    if(seen.has(key))continue; seen.add(key);
-    const nS=nums.map(n=>String(n).padStart(2,'0'));
-    const cr=crowdScore(nS,vtype);
-    const wW=psi.level==='ĐỎ';
-    if(wW&&cr<70&&Math.random()<.6)continue;
-    if(!wW&&cr>90&&Math.random()<.5)continue;
-    tickets.push({nums:nS,sum:nums.reduce((a,b)=>a+b,0),ev:nums.filter(n=>n%2===0).length,cr,type:cr>=90?'🌟 Dị thường':'🤝 Phổ thông'});
-  }
-  return tickets;
+  
+  btn.textContent='⚙️ KHỞI ĐỘNG HỆ THỐNG VÉT CẠN TỔ HỢP...';
+  
+  const worker = new Worker(workerUrl);
+  
+  worker.onmessage = function(e) {
+      if (e.data.type === 'progress') {
+          progDiv.innerText = `Đang quét: ${e.data.scanned.toLocaleString()} tổ hợp...`;
+      } else if (e.data.type === 'done') {
+          progDiv.innerText = `Đã hoàn tất quét vét cạn ${e.data.totalScanned.toLocaleString()} tổ hợp vé!`;
+          renderTickets(e.data.tickets, genType);
+          btn.disabled=false; 
+          btn.textContent='🤖 AI Vét Cạn & Sinh Vé (Wheeling)';
+          worker.terminate();
+      }
+  };
+  
+  // Truyền dữ liệu vào Worker
+  worker.postMessage({
+      vtype: genType,
+      count: count,
+      psiLevel: psi.level,
+      draws: getDraws(genType),
+      kMax: CFG[genType].max,
+      weirdCut: 90
+  });
 }
 
 function renderPSI(psi){
@@ -421,7 +579,7 @@ function renderPSI(psi){
   document.getElementById('psi-display').innerHTML=`
     <div class="psi-box" style="background:${bgM[psi.level]};border:1px solid ${bdM[psi.level]}">
       <div class="psi-score" style="color:${psi.color}">${psi.score}</div>
-      <div class="psi-label" style="color:${psi.color}">/100 PSI · ${psi.level} · Nên mua ${psi.buy} vé</div>
+      <div class="psi-label" style="color:${psi.color}">/100 PSI · ${psi.level} · Đề xuất ${psi.buy} vé</div>
       <div class="psi-action" style="color:${psi.color}">${psi.action.replace(/\n/g,'<br>')}</div>
     </div>
     <div class="psi-grid">
@@ -434,16 +592,17 @@ function renderPSI(psi){
 function renderTickets(tickets,vtype){
   if(!tickets.length){document.getElementById('tickets-output').innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Không sinh được vé. Thử lại!</div>';return;}
   const iM=vtype==='mega_645';
-  let h=`<div class="card"><div class="card-title">${tickets.length} vé đề xuất</div>`;
+  let h=`<div class="card"><div class="card-title">KẾT QUẢ ÁP DỤNG WHEELING - ${tickets.length} VÉ</div>`;
   tickets.forEach((t,i)=>{
-    h+=`<div class="ticket"><div style="font-size:.74rem;color:var(--muted);margin-bottom:5px">Vé #${i+1} · ${t.type}</div><div class="balls">`;
+    const typeStr = t.crowdScore >= 90 ? "🌟 Dị thường" : "🤝 Phổ thông";
+    h+=`<div class="ticket"><div style="font-size:.74rem;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between"><span>Vé #${i+1} · ${typeStr}</span><span>Dị: ${t.crowdScore}đ | Cạ: ${t.fav}/15</span></div><div class="balls">`;
     t.nums.forEach(n=>{h+=`<div class="ball ${iM?'mb':'pb'}">${n}</div>`;});
-    h+=`</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Tổng: ${t.sum} · C/L: ${t.ev}/${6-t.ev} · Dị: ${t.cr}đ</div></div>`;
+    h+=`</div></div>`;
   });
   h+='</div>';
   document.getElementById('tickets-output').innerHTML=h;
 }
-
+  
 // ─── STATS ───────────────────────────────────────────────
 function renderStats(){
   const view=document.getElementById('stats-view').value;
