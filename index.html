@@ -70,6 +70,10 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 .refresh-row{display:flex;align-items:center;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:8px}
 .refresh-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:.7rem}
 .refresh-btn:hover{color:var(--accent);border-color:var(--accent)}
+.bt-result{margin-top:8px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.2);border:1px solid var(--border)}
+.bt-prize{font-weight:bold;font-size:0.85rem;}
+.bt-prize.win{color:var(--accent);}
+.bt-prize.lose{color:var(--muted);}
 </style>
 </head>
 <body>
@@ -84,9 +88,9 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 
 <div class="tabs" id="tabs">
   <div class="tab active" onclick="showPage('gen',this)">🎯 Sinh số</div>
+  <div class="tab" onclick="showPage('backtest',this)">⏱ Kiểm định</div>
   <div class="tab" onclick="showPage('stats',this)">📊 Thống kê</div>
   <div class="tab" onclick="showPage('recent',this)">📋 Kết quả</div>
-  <div class="tab" onclick="showPage('rank',this)">🏆 Xếp hạng</div>
 </div>
 
 <div class="content">
@@ -115,6 +119,32 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
     </div>
     <div id="worker-progress" style="display:none; margin-bottom:12px; font-size: 0.75rem; color: var(--accent); text-align: center;"></div>
     <div id="tickets-output"></div>
+  </div>
+</div>
+
+<!-- BACKTEST -->
+<div class="page" id="page-backtest">
+  <div id="bt-loading" class="loading-full"><div class="spinner"></div><div>Đang tải...</div></div>
+  <div id="bt-body" style="display:none">
+    <div class="card">
+      <div class="card-title">Thiết lập thời điểm giả lập</div>
+      <div class="type-sel">
+        <button class="type-btn mega active" onclick="setType('mega_645',this,'bt')">🟡 Mega 6/45</button>
+        <button class="type-btn power" onclick="setType('power_655',this,'bt')">🔵 Power 6/55</button>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;">Chọn kỳ quá khứ để giả lập (đóng băng tương lai):</div>
+        <select id="bt-draws"></select>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;">Số vé mua:</div>
+        <select id="bt-ticket-count"><option value="5">5 vé</option><option value="10" selected>10 vé</option><option value="15">15 vé</option><option value="20">20 vé</option></select>
+      </div>
+      <button class="btn btn-blue" id="bt-run-btn" onclick="runBacktest()">⚡ Chạy Đối Soát Ngay</button>
+    </div>
+    <div id="bt-worker-progress" style="display:none; margin-bottom:12px; font-size: 0.75rem; color: var(--accent); text-align: center;"></div>
+    <div id="bt-summary-output"></div>
+    <div id="bt-tickets-output"></div>
   </div>
 </div>
 
@@ -155,22 +185,6 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
     <div id="recent-output"></div>
   </div>
 </div>
-
-<!-- RANK -->
-<div class="page" id="page-rank">
-  <div id="rank-loading" class="loading-full"><div class="spinner"></div><div>Đang tải...</div></div>
-  <div id="rank-body" style="display:none">
-    <div class="card">
-      <div class="type-sel">
-        <button class="type-btn mega active" onclick="setType('mega_645',this,'rank')">🟡 Mega 6/45</button>
-        <button class="type-btn power" onclick="setType('power_655',this,'rank')">🔵 Power 6/55</button>
-      </div>
-      <div class="warn">⚠️ Dựa trên thống kê lịch sử, không phải dự báo xác suất.</div>
-      <button class="btn btn-green" onclick="renderRanking()">🏆 Tính bảng xếp hạng</button>
-    </div>
-    <div id="rank-output"></div>
-  </div>
-</div>
 </div>
 
 <script>
@@ -186,7 +200,7 @@ const CFG = {
 
 let DATA = [];
 let dataLoaded = false;
-let genType='mega_645', statsType='mega_645', recentType='mega_645', rankType='mega_645';
+let genType='mega_645', statsType='mega_645', recentType='mega_645', btType='mega_645';
 
 function fastCrowdScore(nums) {
    let score = 100;
@@ -246,7 +260,6 @@ function fastCrowdScore(nums) {
    return score;
 }
 
-// ─── LOAD DATA ───────────────────────────────────────────
 async function loadData(force=false){
   if(dataLoaded && !force) return true;
   setStatus('loading','Đang tải dữ liệu...');
@@ -287,7 +300,7 @@ function setStatus(state, txt){
 }
 
 function showAllBodies(){
-  ['gen','stats','recent','rank'].forEach(p=>{
+  ['gen','bt','stats','recent'].forEach(p=>{
     const ld=document.getElementById(p+'-loading');
     const bd=document.getElementById(p+'-body');
     if(ld) ld.style.display='none';
@@ -297,10 +310,11 @@ function showAllBodies(){
   const el=document.getElementById('recent-updated');
   if(el) el.textContent = `Mega: ${mega||'—'} · Power: ${power||'—'}`;
   renderRecent();
+  updateBtDraws();
 }
 
 function showErrBodies(msg){
-  ['gen','stats','recent','rank'].forEach(p=>{
+  ['gen','bt','stats','recent'].forEach(p=>{
     const ld=document.getElementById(p+'-loading');
     if(ld) ld.innerHTML=`<div class="err-box">❌ Không tải được dữ liệu.<br><strong>${msg}</strong></div>`;
   });
@@ -308,7 +322,7 @@ function showErrBodies(msg){
 
 async function refreshData(){
   dataLoaded = false;
-  ['gen','stats','recent','rank'].forEach(p=>{
+  ['gen','bt','stats','recent'].forEach(p=>{
     const ld=document.getElementById(p+'-loading');
     const bd=document.getElementById(p+'-body');
     if(ld){ld.style.display='flex';ld.innerHTML='<div class="spinner"></div><div>Đang tải lại...</div>';}
@@ -332,7 +346,7 @@ function setType(t,btn,ctx){
   if(ctx==='gen'){genType=t;document.getElementById('psi-display').innerHTML='<div style="color:var(--muted);font-size:.82rem">Nhấn nút để phân tích</div>';document.getElementById('tickets-output').innerHTML='';}
   if(ctx==='stats'){statsType=t;if(dataLoaded)renderStats();}
   if(ctx==='recent'){recentType=t;if(dataLoaded)renderRecent();}
-  if(ctx==='rank'){rankType=t;document.getElementById('rank-output').innerHTML='';}
+  if(ctx==='bt'){btType=t;if(dataLoaded)updateBtDraws();}
   btn.closest('.type-sel').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -476,8 +490,8 @@ const workerScript = `
 const blob = new Blob([workerScript], { type: 'application/javascript' });
 const workerUrl = URL.createObjectURL(blob);
 
-function computePSI(vtype){
-  const draws = getDraws(vtype);
+function computePSI(drawsInput, vtype){
+  const draws = drawsInput;
   if(draws.length < 5) return{score:0,level:'XANH',buy:2,action:'Chưa đủ dữ liệu.',color:'#10b981',g1:0,g2:0,g3:0,g4:0,g5:0,g6:0};
   const isM = vtype === 'mega_645', mult = isM ? 45 : 79, jpBig = isM ? 80e9 : 120e9;
   const latest = draws[draws.length-1];
@@ -543,7 +557,8 @@ async function generateTickets(){
   progDiv.style.display = 'block';
   
   await new Promise(r => setTimeout(r, 50));
-  const psi = computePSI(genType);
+  const activeDraws = getDraws(genType);
+  const psi = computePSI(activeDraws, genType);
   renderPSI(psi);
   
   btn.textContent = '⚙️ KHỞI ĐỘNG HỆ THỐNG VÉT CẠN TỔ HỢP...';
@@ -562,7 +577,7 @@ async function generateTickets(){
           progDiv.innerText = `Đang quét: ${e.data.scanned.toLocaleString()} tổ hợp...`;
       } else if (e.data.type === 'done') {
           progDiv.innerText = `Đã hoàn tất quét vét cạn ${e.data.totalScanned.toLocaleString()} tổ hợp vé!`;
-          renderTickets(e.data.tickets, genType);
+          renderTickets(e.data.tickets, genType, 'tickets-output');
           btn.disabled = false; 
           btn.textContent = '🤖 AI Vét Cạn & Sinh Vé (Wheeling)';
           worker.terminate();
@@ -573,7 +588,7 @@ async function generateTickets(){
       vtype: genType,
       count: count,
       psiLevel: psi.level,
-      draws: getDraws(genType),
+      draws: activeDraws,
       kMax: CFG[genType].max,
       weirdCut: dynamicWeirdCut
   });
@@ -595,18 +610,145 @@ function renderPSI(psi){
     </div>`;
 }
 
-function renderTickets(tickets,vtype){
-  if(!tickets.length){document.getElementById('tickets-output').innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Không sinh được vé. Thử lại!</div>';return;}
+function renderTickets(tickets,vtype, targetId){
+  if(!tickets.length){document.getElementById(targetId).innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Không sinh được vé. Thử lại!</div>';return;}
   const iM=vtype==='mega_645';
   let h=`<div class="card"><div class="card-title">KẾT QUẢ ÁP DỤNG WHEELING - ${tickets.length} VÉ</div>`;
   tickets.forEach((t,i)=>{
     const typeStr = t.crowdScore >= 90 ? "🌟 Dị thường" : "🤝 Phổ thông";
     h+=`<div class="ticket"><div style="font-size:.74rem;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between"><span>Vé #${i+1} · ${typeStr}</span><span>Dị: ${t.crowdScore}đ | Cạ: ${t.fav}/15</span></div><div class="balls">`;
     t.nums.forEach(n=>{h+=`<div class="ball ${iM?'mb':'pb'}">${n}</div>`;});
+    
+    if (t.checkResult) {
+        let pColor = t.checkResult.val > 0 ? 'win' : 'lose';
+        h+= `</div><div class="bt-result"><div class="bt-prize ${pColor}">${t.checkResult.name} ${t.checkResult.val>0 ? '(+'+t.checkResult.val.toLocaleString()+'đ)' : ''}</div><div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Kỳ sau ra: ${t.actualNextNums.join(' - ')} ${t.actualNextBonus ? '(+'+t.actualNextBonus+')' : ''}</div>`;
+    }
+    
     h+=`</div></div>`;
   });
   h+='</div>';
-  document.getElementById('tickets-output').innerHTML=h;
+  document.getElementById(targetId).innerHTML=h;
+}
+
+// ─── BACKTEST LOGIC ──────────────────────────────────────
+function updateBtDraws(){
+    const sel = document.getElementById('bt-draws');
+    sel.innerHTML = '';
+    const draws = getDraws(btType).reverse().slice(1); 
+    draws.forEach((d, idx) => {
+        let opt = document.createElement('option');
+        opt.value = draws.length - 1 - idx; // store original index mapping conceptually
+        opt.dataset.date = d.d;
+        let jpInfo = d.w > 0 ? ` [💥 NỔ JP ${(d.jp/1e9).toFixed(1)} Tỷ]` : '';
+        opt.textContent = `${d.d}${jpInfo}`;
+        sel.appendChild(opt);
+    });
+}
+
+function calcPrize(ticket, actual, bonus, vtype, jp1, jp2) {
+    let tNums = ticket.map(Number);
+    let aNums = actual.map(Number);
+    let bNum = bonus ? Number(bonus) : null;
+    
+    let match = tNums.filter(n => aNums.includes(n)).length;
+    let hasB = bNum && tNums.includes(bNum);
+    
+    if (vtype === 'mega_645') {
+        if (match === 6) return {name: "JACKPOT", val: jp1 || 12e9};
+        if (match === 5) return {name: "Giải Nhất", val: 1e7};
+        if (match === 4) return {name: "Giải Nhì", val: 3e5};
+        if (match === 3) return {name: "Giải Ba", val: 3e4};
+    } else {
+        if (match === 6) return {name: "JACKPOT 1", val: jp1 || 30e9};
+        if (match === 5 && hasB) return {name: "JACKPOT 2", val: jp2 || 3e9};
+        if (match === 5) return {name: "Giải Nhất", val: 4e7};
+        if (match === 4) return {name: "Giải Nhì", val: 5e5};
+        if (match === 3) return {name: "Giải Ba", val: 5e4};
+    }
+    return {name: "Trượt", val: 0};
+}
+
+async function runBacktest(){
+    if(!dataLoaded) return;
+    const btn = document.getElementById('bt-run-btn');
+    const sel = document.getElementById('bt-draws');
+    const count = parseInt(document.getElementById('bt-ticket-count').value);
+    const progDiv = document.getElementById('bt-worker-progress');
+    const sumOut = document.getElementById('bt-summary-output');
+    
+    if(sel.selectedIndex < 0) return;
+    const targetDate = sel.options[sel.selectedIndex].dataset.date;
+    
+    btn.disabled = true; btn.textContent = '⏳ Đang đóng băng thời gian...';
+    document.getElementById('bt-tickets-output').innerHTML = '';
+    sumOut.innerHTML = '';
+    progDiv.style.display = 'block';
+    
+    await new Promise(r => setTimeout(r, 50));
+    
+    const allDraws = getDraws(btType);
+    let targetIdx = allDraws.findIndex(d => d.d === targetDate);
+    
+    if(targetIdx === -1 || targetIdx >= allDraws.length - 1) {
+        alert("Lỗi: Không tìm thấy kỳ kế tiếp để đối soát.");
+        btn.disabled = false; btn.textContent = '⚡ Chạy Đối Soát Ngay';
+        return;
+    }
+    
+    // ĐÓNG BĂNG TƯƠNG LAI
+    const slicedDraws = allDraws.slice(0, targetIdx + 1);
+    const nextDraw = allDraws[targetIdx + 1];
+    
+    const psi = computePSI(slicedDraws, btType);
+    let dynamicWeirdCut = psi.level === 'ĐỎ' ? 80 : (psi.level === 'XANH' ? 95 : 90);
+
+    const worker = new Worker(workerUrl);
+    worker.onmessage = function(e) {
+        if (e.data.type === 'progress') {
+            progDiv.innerText = `Giả lập duyệt: ${e.data.scanned.toLocaleString()} tổ hợp...`;
+        } else if (e.data.type === 'done') {
+            progDiv.innerText = `Hoàn tất đối soát ${e.data.tickets.length} vé.`;
+            
+            let totalCost = e.data.tickets.length * 10000;
+            let totalPrize = 0;
+            
+            e.data.tickets.forEach(t => {
+                let check = calcPrize(t.nums, nextDraw.n, nextDraw.b, btType, nextDraw.jp, nextDraw.jp2);
+                t.checkResult = check;
+                t.actualNextNums = nextDraw.n;
+                t.actualNextBonus = nextDraw.b;
+                totalPrize += check.val;
+            });
+            
+            let profit = totalPrize - totalCost;
+            let pColor = profit > 0 ? 'var(--accent)' : (profit < 0 ? 'var(--red)' : 'var(--muted)');
+            let sign = profit > 0 ? '+' : '';
+            
+            sumOut.innerHTML = `
+                <div class="card" style="border-color:${pColor}; background:rgba(0,0,0,0.1)">
+                    <div style="font-size:0.8rem; color:var(--muted)">Kết quả kỳ kế tiếp: ${nextDraw.d}</div>
+                    <div style="font-size:1.1rem; font-weight:bold; margin-top:8px;">Chi phí: ${totalCost.toLocaleString()} đ</div>
+                    <div style="font-size:1.1rem; font-weight:bold; color:${pColor};">Trúng: ${totalPrize.toLocaleString()} đ</div>
+                    <div style="font-size:1.2rem; font-weight:900; margin-top:8px; color:${pColor}">Lãi/Lỗ: ${sign}${profit.toLocaleString()} đ</div>
+                </div>
+            `;
+            
+            renderTickets(e.data.tickets, btType, 'bt-tickets-output');
+            
+            btn.disabled = false; 
+            btn.textContent = '⚡ Chạy Đối Soát Ngay';
+            worker.terminate();
+        }
+    };
+    
+    worker.postMessage({
+        vtype: btType,
+        count: count,
+        psiLevel: psi.level,
+        draws: slicedDraws,
+        kMax: CFG[btType].max,
+        weirdCut: dynamicWeirdCut
+    });
 }
 
 function computeStats(vtype){
@@ -665,29 +807,6 @@ function renderRecent(){
     h+='</div></div>';
   });
   document.getElementById('recent-output').innerHTML=h||'<div style="color:var(--muted);padding:20px;text-align:center">Không có dữ liệu</div>';
-}
-
-function renderRanking(){
-  document.getElementById('rank-output').innerHTML='<div style="text-align:center;padding:20px"><div class="spinner" style="margin:0 auto"></div></div>';
-  setTimeout(()=>{
-    const {nums,total}=computeStats(rankType);
-    const iM=rankType==='mega_645', exp=total*6/CFG[rankType].max;
-    const sc=nums.map(n=>({...n,score:Math.min(100,(n.cnt/exp*50+Math.max(0,50-n.miss*2))/2)})).sort((a,b)=>b.score-a.score).slice(0,20);
-    const gc=['#ffd700','#c0c0c0','#cd7f32'];
-    let h='<div class="card"><div class="card-title">Top 20 số tổng hợp</div>';
-    sc.forEach((n,i)=>{
-      const c=i<3?gc[i]:(iM?'#f59e0b':'#3b82f6');
-      h+=`<div class="rank-item">
-        <div class="rank-n" style="background:${c}20;color:${c}">${i+1}</div>
-        <div class="ball ${iM?'mb':'pb'}" style="width:32px;height:32px;font-size:.76rem">${n.n}</div>
-        <div style="flex:1"><div style="font-size:.78rem">${n.cnt} lần · Vắng ${n.miss} kỳ</div>
-          <div class="bar"><div class="bar-fill" style="width:${n.score}%;background:${c}"></div></div></div>
-        <div style="font-size:.76rem;color:var(--muted)">${n.score.toFixed(0)}đ</div>
-      </div>`;
-    });
-    h+='</div>';
-    document.getElementById('rank-output').innerHTML=h;
-  },80);
 }
 
 loadData();
