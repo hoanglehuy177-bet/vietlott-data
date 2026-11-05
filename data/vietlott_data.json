@@ -26049,5 +26049,425 @@
     "bonus_number": "06",
     "jackpot2_value": 3800633150,
     "winners_jp2": 1
+  },
+  {
+    "date": "2026-10-09",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "05",
+      "07",
+      "12",
+      "23",
+      "32",
+      "41"
+    ],
+    "jackpot_value": 15889161000,
+    "winners": 0,
+    "winners_g3": 23329,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-10",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "14",
+      "17",
+      "21",
+      "23",
+      "24",
+      "39"
+    ],
+    "jackpot_value": 136743859650,
+    "winners": 0,
+    "winners_g3": 38563,
+    "source": "minhchinh.com",
+    "bonus_number": "30",
+    "jackpot2_value": 3785670500,
+    "winners_jp2": 1
+  },
+  {
+    "date": "2026-10-11",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "03",
+      "09",
+      "16",
+      "29",
+      "30",
+      "44"
+    ],
+    "jackpot_value": 17917606500,
+    "winners": 0,
+    "winners_g3": 24656,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-13",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "02",
+      "14",
+      "27",
+      "40",
+      "50",
+      "53"
+    ],
+    "jackpot_value": 146262248400,
+    "winners": 0,
+    "winners_g3": 31122,
+    "source": "minhchinh.com",
+    "bonus_number": "26",
+    "jackpot2_value": 4057598750,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-14",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "06",
+      "16",
+      "19",
+      "21",
+      "34",
+      "43"
+    ],
+    "jackpot_value": 20329744500,
+    "winners": 0,
+    "winners_g3": 25751,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-15",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "07",
+      "23",
+      "25",
+      "42",
+      "45",
+      "51"
+    ],
+    "jackpot_value": 156701347950,
+    "winners": 0,
+    "winners_g3": 35792,
+    "source": "minhchinh.com",
+    "bonus_number": "04",
+    "jackpot2_value": 2608749350,
+    "winners_jp2": 2
+  },
+  {
+    "date": "2026-10-16",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "09",
+      "20",
+      "26",
+      "35",
+      "36",
+      "38"
+    ],
+    "jackpot_value": 22839868000,
+    "winners": 0,
+    "winners_g3": 28075,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-17",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "01",
+      "10",
+      "11",
+      "12",
+      "16",
+      "37"
+    ],
+    "jackpot_value": 164048997900,
+    "winners": 0,
+    "winners_g3": 42573,
+    "source": "minhchinh.com",
+    "bonus_number": "48",
+    "jackpot2_value": 3816405550,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-18",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "10",
+      "11",
+      "31",
+      "38",
+      "40",
+      "44"
+    ],
+    "jackpot_value": 26444954000,
+    "winners": 0,
+    "winners_g3": 25159,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-20",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "13",
+      "20",
+      "23",
+      "30",
+      "50",
+      "55"
+    ],
+    "jackpot_value": 177132635850,
+    "winners": 0,
+    "winners_g3": 37037,
+    "source": "minhchinh.com",
+    "bonus_number": "45",
+    "jackpot2_value": 5270143100,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-21",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "04",
+      "10",
+      "14",
+      "22",
+      "25",
+      "44"
+    ],
+    "jackpot_value": 31281381500,
+    "winners": 1,
+    "winners_g3": 28104,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-22",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "14",
+      "19",
+      "24",
+      "31",
+      "34",
+      "42"
+    ],
+    "jackpot_value": 188849262450,
+    "winners": 0,
+    "winners_g3": 45639,
+    "source": "minhchinh.com",
+    "bonus_number": "37",
+    "jackpot2_value": 3285995250,
+    "winners_jp2": 2
+  },
+  {
+    "date": "2026-10-23",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "02",
+      "05",
+      "11",
+      "22",
+      "32",
+      "40"
+    ],
+    "jackpot_value": 13983147000,
+    "winners": 0,
+    "winners_g3": 19027,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-24",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "06",
+      "07",
+      "18",
+      "41",
+      "44",
+      "50"
+    ],
+    "jackpot_value": 199984640250,
+    "winners": 1,
+    "winners_g3": 43703,
+    "source": "minhchinh.com",
+    "bonus_number": "53",
+    "jackpot2_value": 4237264200,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-25",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "04",
+      "13",
+      "22",
+      "25",
+      "40",
+      "41"
+    ],
+    "jackpot_value": 16103186000,
+    "winners": 0,
+    "winners_g3": 19825,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-27",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "09",
+      "18",
+      "27",
+      "28",
+      "31",
+      "35"
+    ],
+    "jackpot_value": 31758267450,
+    "winners": 0,
+    "winners_g3": 22422,
+    "source": "minhchinh.com",
+    "bonus_number": "50",
+    "jackpot2_value": 4432627250,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-28",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "01",
+      "09",
+      "11",
+      "28",
+      "33",
+      "42"
+    ],
+    "jackpot_value": 18424878000,
+    "winners": 0,
+    "winners_g3": 24461,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-29",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "09",
+      "29",
+      "33",
+      "38",
+      "45",
+      "46"
+    ],
+    "jackpot_value": 33944640150,
+    "winners": 0,
+    "winners_g3": 16183,
+    "source": "minhchinh.com",
+    "bonus_number": "53",
+    "jackpot2_value": 4675557550,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-10-30",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "07",
+      "21",
+      "22",
+      "40",
+      "41",
+      "45"
+    ],
+    "jackpot_value": 20852928000,
+    "winners": 0,
+    "winners_g3": 22278,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-10-31",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "12",
+      "18",
+      "22",
+      "26",
+      "28",
+      "55"
+    ],
+    "jackpot_value": 36604726050,
+    "winners": 0,
+    "winners_g3": 17591,
+    "source": "minhchinh.com",
+    "bonus_number": "11",
+    "jackpot2_value": 4971122650,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-11-01",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "05",
+      "09",
+      "17",
+      "18",
+      "34",
+      "36"
+    ],
+    "jackpot_value": 23200118500,
+    "winners": 0,
+    "winners_g3": 25743,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-11-03",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "10",
+      "22",
+      "31",
+      "39",
+      "43",
+      "54"
+    ],
+    "jackpot_value": 39296824950,
+    "winners": 0,
+    "winners_g3": 19076,
+    "source": "minhchinh.com",
+    "bonus_number": "14",
+    "jackpot2_value": 5270244750,
+    "winners_jp2": 0
+  },
+  {
+    "date": "2026-11-04",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "07",
+      "14",
+      "20",
+      "30",
+      "34",
+      "40"
+    ],
+    "jackpot_value": 26087005500,
+    "winners": 1,
+    "winners_g3": 23891,
+    "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-11-05",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "06",
+      "20",
+      "34",
+      "41",
+      "49",
+      "52"
+    ],
+    "jackpot_value": 42432448800,
+    "winners": 0,
+    "winners_g3": 15524,
+    "source": "minhchinh.com",
+    "bonus_number": "36",
+    "jackpot2_value": 5618647400,
+    "winners_jp2": 0
   }
 ]
