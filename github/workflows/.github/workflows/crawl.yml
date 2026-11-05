@@ -1,0 +1,55 @@
+name: Crawl Vietlott Daily
+
+on:
+  schedule:
+    # Chạy lúc 19:15 ICT mỗi ngày (12:15 UTC)
+    - cron: "15 12 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Số ngày cần crawl ngược"
+        required: false
+        default: "14"
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # Cần để commit data
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crawler
+        run: |
+          DAYS="${{ github.event.inputs.days || '7' }}"
+          python crawl.py --days=$DAYS
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vietlott_data.json
+          if git diff --cached --quiet; then
+            echo "Không có dữ liệu mới, bỏ qua commit."
+          else
+            COUNT=$(python -c "import json; d=json.load(open('data/vietlott_data.json')); print(len(d))")
+            DATE=$(date +"%d/%m/%Y %H:%M ICT" --date="TZ='Asia/Ho_Chi_Minh' now" 2>/dev/null || date +"%d/%m/%Y %H:%M UTC")
+            git commit -m "data: cập nhật $COUNT kỳ [$DATE]"
+            git push
+          fi
