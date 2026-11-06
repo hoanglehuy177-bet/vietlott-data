@@ -80,6 +80,7 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 .pool-title{font-size:.72rem;color:var(--red);font-weight:700;margin-bottom:6px}
 .pool-balls{display:flex;flex-wrap:wrap;gap:4px}
 .pool-ball{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.68rem;background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+#bt-suggest-local:disabled,#bt-suggest-global:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -137,12 +138,38 @@ select{width:100%;padding:10px;background:var(--surface2);border:1px solid var(-
 <div class="page" id="page-backtest">
   <div id="bt-loading" class="loading-full"><div class="spinner"></div><div>Đang tải...</div></div>
   <div id="bt-body" style="display:none">
+    <!-- Card 1: PSI Hiện tại + Gợi ý kỳ tương tự -->
     <div class="card">
-      <div class="card-title">Thiết lập thời điểm giả lập</div>
+      <div class="card-title">So sánh PSI & Gợi ý kỳ tương tự</div>
       <div class="type-sel">
         <button class="type-btn mega active" onclick="setType('mega_645',this,'bt')">🟡 Mega 6/45</button>
         <button class="type-btn power" onclick="setType('power_655',this,'bt')">🔵 Power 6/55</button>
       </div>
+      <!-- PSI hiện tại -->
+      <div id="bt-current-psi" style="margin-bottom:10px">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">PSI Hiện tại</div>
+        <div id="bt-psi-summary" style="background:var(--surface2);border-radius:8px;padding:10px;font-size:.8rem;color:var(--muted);text-align:center">
+          Nhấn nút gợi ý để tính PSI
+        </div>
+      </div>
+      <!-- Nút gợi ý -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <button class="btn" id="bt-suggest-local" onclick="suggestSimilar('local')"
+          style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:10px;font-size:.78rem">
+          ✨ Gợi ý (3 Tháng)
+        </button>
+        <button class="btn" id="bt-suggest-global" onclick="suggestSimilar('global')"
+          style="background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:10px;font-size:.78rem">
+          ✨ Gợi ý (Toàn lịch sử)
+        </button>
+      </div>
+      <!-- Kết quả gợi ý -->
+      <div id="bt-suggest-result" style="display:none;margin-bottom:10px"></div>
+    </div>
+
+    <!-- Card 2: Chạy đối soát thủ công -->
+    <div class="card">
+      <div class="card-title">Thiết lập thời điểm giả lập</div>
       <div style="margin-bottom:10px">
         <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">Chọn kỳ quá khứ để giả lập (đóng băng tương lai):</div>
         <select id="bt-draws"></select>
@@ -355,6 +382,7 @@ function showAllBodies(){
   if(el)el.textContent=`Mega: ${mega||'—'} · Power: ${power||'—'}`;
   renderRecent();
   updateBtDraws();
+  renderBtCurrentPSI();
 }
 
 function showErrBodies(msg){
@@ -387,13 +415,21 @@ function showPage(id,btn){
   document.getElementById('page-'+id).classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='stats'&&dataLoaded)renderStats();
+  if(id==='backtest'&&dataLoaded)renderBtCurrentPSI();
 }
 
 function setType(t,btn,ctx){
   if(ctx==='gen'){genType=t;document.getElementById('psi-display').innerHTML='<div style="color:var(--muted);font-size:.82rem">Nhấn nút để phân tích</div>';document.getElementById('tickets-output').innerHTML='';document.getElementById('pool-display').innerHTML='';}
   if(ctx==='stats'){statsType=t;if(dataLoaded)renderStats();}
   if(ctx==='recent'){recentType=t;if(dataLoaded)renderRecent();}
-  if(ctx==='bt'){btType=t;if(dataLoaded)updateBtDraws();}
+  if(ctx==='bt'){
+    btType=t;
+    if(dataLoaded){
+      updateBtDraws();
+      renderBtCurrentPSI();
+      document.getElementById('bt-suggest-result').style.display='none';
+    }
+  }
   btn.closest('.type-sel').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -992,6 +1028,178 @@ async function generateTickets(){
     psiLevel:psi.level,
     weirdCut:weirdCut
   });
+}
+
+// ═══════════════════════════════════════════════════
+// BACKTEST — PSI HIỆN TẠI + GỢI Ý KỲ TƯƠNG TỰ
+// Dịch 1:1 từ _suggest_similar_historical_draw Python
+// ═══════════════════════════════════════════════════
+
+// Hiển thị PSI hiện tại ngay khi vào tab Kiểm định
+function renderBtCurrentPSI(){
+  const draws = getDraws(btType);
+  if(draws.length < 5){
+    document.getElementById('bt-psi-summary').innerHTML =
+      '<span style="color:var(--muted)">Chưa đủ dữ liệu</span>';
+    return;
+  }
+  const psi = computePSI(draws, btType);
+  const colMap = {ĐỎ:'#ef4444', CAM:'#f97316', XANH:'#10b981'};
+  const c = colMap[psi.level];
+  document.getElementById('bt-psi-summary').innerHTML = `
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center">
+      <div style="text-align:center">
+        <div style="font-size:1.8rem;font-weight:900;color:${c};line-height:1">${psi.score}</div>
+        <div style="font-size:.65rem;color:${c};font-weight:700">/100 · ${psi.level}</div>
+      </div>
+      <div>
+        <div style="font-size:.76rem;color:${c};font-weight:600;margin-bottom:3px">
+          JP hiện tại: ${((draws[draws.length-1].jp||0)/1e9).toFixed(1)} Tỷ đ
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.5">
+          G1:${psi.g1} G2:${psi.g2} G3:${psi.g3} G4:${psi.g4} G5:${psi.g5} G6:${psi.g6}
+        </div>
+        <div style="font-size:.7rem;color:${c};margin-top:3px">${psi.action.split('\n')[0]}</div>
+      </div>
+    </div>`;
+}
+
+// Thuật toán dò tìm kỳ lịch sử tương tự — dịch 1:1 từ Python
+async function suggestSimilar(mode){
+  if(!dataLoaded) return;
+  const btnLocal  = document.getElementById('bt-suggest-local');
+  const btnGlobal = document.getElementById('bt-suggest-global');
+  const resDiv    = document.getElementById('bt-suggest-result');
+
+  btnLocal.disabled  = true;
+  btnGlobal.disabled = true;
+  btnLocal.textContent  = mode==='local'  ? '⏳ Đang dò...' : '✨ Gợi ý (3 Tháng)';
+  btnGlobal.textContent = mode==='global' ? '⏳ Đang dò...' : '✨ Gợi ý (Toàn lịch sử)';
+  resDiv.style.display = 'none';
+
+  await new Promise(r => setTimeout(r, 30));
+
+  const allDraws = getDraws(btType);
+  if(allDraws.length < 30){
+    resDiv.innerHTML = '<div class="warn">⚠️ Dữ liệu lịch sử chưa đủ dài (cần ≥ 30 kỳ).</div>';
+    resDiv.style.display = 'block';
+    btnLocal.disabled = false; btnGlobal.disabled = false;
+    btnLocal.textContent = '✨ Gợi ý (3 Tháng)';
+    btnGlobal.textContent = '✨ Gợi ý (Toàn lịch sử)';
+    return;
+  }
+
+  // 1. PSI hiện tại (toàn bộ lịch sử)
+  const currPSI  = computePSI(allDraws, btType);
+  const currScore = currPSI.score;
+  const currJP    = allDraws[allDraws.length-1].jp || 1;
+
+  // 2. Phạm vi dò tìm
+  const endIdx = allDraws.length - 2; // Bỏ 2 kỳ cuối (cần kỳ tiếp theo để đối soát)
+  const startIdx = mode === 'local'
+    ? Math.max(20, endIdx - 45)   // 45 kỳ gần nhất (~3 tháng)
+    : 20;                          // Toàn bộ lịch sử
+  const scopeMsg = mode === 'local' ? '45 kỳ quay gần nhất (3 tháng)' : 'toàn bộ lịch sử';
+
+  // 3. Lọc thô: 45 kỳ có JP gần với hiện tại nhất
+  const candidates = [];
+  for(let i = startIdx; i < endIdx; i++){
+    const histJP = allDraws[i].jp || 0;
+    if(histJP > 0){
+      const jpDiffRatio = Math.abs(histJP - currJP) / currJP;
+      candidates.push({ i, jpDiffRatio });
+    }
+  }
+  candidates.sort((a,b) => a.jpDiffRatio - b.jpDiffRatio);
+  const top = candidates.slice(0, 45);
+
+  // 4. Lọc tinh: tính PSI lịch sử cho từng kỳ ứng viên (đóng băng tương lai)
+  let bestIdx = -1, bestScore = Infinity, bestHistPSI = 0, bestDate = '';
+  for(const { i, jpDiffRatio } of top){
+    // Đóng băng: chỉ dùng data đến kỳ i
+    const frozenDraws = allDraws.slice(0, i + 1);
+    const histPSI = computePSI(frozenDraws, btType);
+    const histScore = histPSI.score;
+
+    // Hàm mất mát: sai số JP (%) * 1.5 + sai số PSI tuyệt đối
+    const lossScore = (jpDiffRatio * 100) * 1.5 + Math.abs(histScore - currScore);
+
+    if(lossScore < bestScore){
+      bestScore    = lossScore;
+      bestIdx      = i;
+      bestHistPSI  = histScore;
+      bestDate     = allDraws[i].d;
+    }
+    // yield để không block UI mỗi 5 lần tính
+    if(top.indexOf({i,jpDiffRatio}) % 5 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  btnLocal.disabled = false; btnGlobal.disabled = false;
+  btnLocal.textContent  = '✨ Gợi ý (3 Tháng)';
+  btnGlobal.textContent = '✨ Gợi ý (Toàn lịch sử)';
+
+  if(bestIdx === -1){
+    resDiv.innerHTML = `<div class="warn">⚠️ Không tìm thấy kỳ nào đủ tương đồng trong ${scopeMsg}.</div>`;
+    resDiv.style.display = 'block';
+    return;
+  }
+
+  const matchPct = (100 / (1 + bestScore / 50)).toFixed(1);
+  const bestJP   = (allDraws[bestIdx].jp / 1e9).toFixed(1);
+  const isJP     = allDraws[bestIdx].w > 0;
+  const nextDraw = allDraws[bestIdx + 1];
+  const nextJP   = allDraws[bestIdx + 1]?.w > 0;
+  const colMap   = {ĐỎ:'#ef4444', CAM:'#f97316', XANH:'#10b981'};
+  const histLevel = bestHistPSI >= 70 ? 'ĐỎ' : bestHistPSI >= 45 ? 'CAM' : 'XANH';
+  const hc = colMap[histLevel];
+  const cc = colMap[currPSI.level];
+
+  resDiv.innerHTML = `
+    <div style="border:1px solid ${hc};border-radius:10px;overflow:hidden;margin-bottom:4px">
+      <div style="background:${hc}22;padding:8px 12px;font-size:.74rem;font-weight:700;color:${hc}">
+        🎯 Kỳ tương đồng nhất — Độ khớp ${matchPct}% · Phạm vi: ${scopeMsg}
+      </div>
+      <div style="padding:10px 12px">
+        <!-- So sánh PSI -->
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:10px">
+          <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">PSI LỊCH SỬ (${bestDate})</div>
+            <div style="font-size:1.4rem;font-weight:900;color:${hc}">${bestHistPSI}</div>
+            <div style="font-size:.65rem;color:${hc}">${histLevel} · JP ${bestJP}T</div>
+          </div>
+          <div style="font-size:1rem;color:var(--muted)">≈</div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">PSI HIỆN TẠI</div>
+            <div style="font-size:1.4rem;font-weight:900;color:${cc}">${currScore}</div>
+            <div style="font-size:.65rem;color:${cc}">${currPSI.level} · JP ${(currJP/1e9).toFixed(1)}T</div>
+          </div>
+        </div>
+        <!-- Kết quả lịch sử của kỳ đó -->
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:4px">Kỳ được chọn ${isJP?'<span style="color:var(--accent)">💥 NỔ JP</span>':'không nổ JP'}. Kỳ tiếp theo (${nextDraw?.d||'?'}): ${nextJP?'<span style="color:var(--accent)">🏆 NỔ JP</span>':'không nổ JP'}</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">
+          Sai số JP: ${((allDraws[bestIdx].jp-currJP)/currJP*100).toFixed(1)}% &nbsp;|&nbsp;
+          Sai số PSI: ${Math.abs(bestHistPSI-currScore)}đ &nbsp;|&nbsp;
+          Loss: ${bestScore.toFixed(1)}
+        </div>
+        <button class="btn btn-blue" onclick="applyBtSuggest('${bestDate}')"
+          style="margin-top:8px;padding:10px;font-size:.8rem">
+          ▶ Áp dụng kỳ này vào đối soát
+        </button>
+      </div>
+    </div>`;
+  resDiv.style.display = 'block';
+}
+
+// Áp kỳ gợi ý vào dropdown bt-draws và tự scroll xuống
+function applyBtSuggest(dateStr){
+  const sel = document.getElementById('bt-draws');
+  for(let i = 0; i < sel.options.length; i++){
+    if(sel.options[i].dataset.date === dateStr){
+      sel.selectedIndex = i;
+      break;
+    }
+  }
+  document.getElementById('bt-run-btn').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 // ═══════════════════════════════════════════════════
