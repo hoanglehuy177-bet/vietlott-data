@@ -2,8 +2,8 @@ name: Crawl Vietlott Daily
 
 on:
   schedule:
-    # Quét lúc 18h57, 19h57 và 20h57, 21h57 (Giờ VN)
-    - cron: "57 11,12,13,14 * * *"
+    # Quét lúc 18h07, 19h07 và 20h07, 21h07 (Giờ VN)
+    - cron: "07 11,12,13,14 * * *"
 
   workflow_dispatch:
     inputs:
