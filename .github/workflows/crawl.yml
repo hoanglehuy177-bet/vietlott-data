@@ -3,7 +3,7 @@ name: Crawl Vietlott Daily
 on:
   schedule:
     # Chạy lúc 19:15 ICT mỗi ngày (12:15 UTC)
-    - cron: "15 12 * * *"
+    - cron: "13 12 * * *"
   workflow_dispatch:
     inputs:
       days:
