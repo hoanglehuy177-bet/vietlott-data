@@ -26590,5 +26590,24 @@
     "winners": 1,
     "winners_g3": 20143,
     "source": "minhchinh.com"
+  },
+  {
+    "date": "2026-11-14",
+    "vietlott_type": "power_655",
+    "main_numbers": [
+      "05",
+      "28",
+      "36",
+      "42",
+      "45",
+      "47"
+    ],
+    "jackpot_value": 37641706500,
+    "winners": 0,
+    "winners_g3": 14995,
+    "source": "minhchinh.com",
+    "bonus_number": "51",
+    "jackpot2_value": 3280675250,
+    "winners_jp2": 0
   }
 ]
