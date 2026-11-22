@@ -26714,5 +26714,21 @@
     "bonus_number": "39",
     "jackpot2_value": 3312886800,
     "winners_jp2": 0
+  },
+  {
+    "date": "2026-11-22",
+    "vietlott_type": "mega_645",
+    "main_numbers": [
+      "01",
+      "13",
+      "14",
+      "18",
+      "23",
+      "39"
+    ],
+    "jackpot_value": 19658014000,
+    "winners": 0,
+    "winners_g3": 19633,
+    "source": "minhchinh.com"
   }
 ]
